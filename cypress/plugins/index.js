@@ -11,7 +11,30 @@
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
+let openFiles = [];
+
 module.exports = (on, config) => {
-  // `on` is used to hook into various events Cypress emits
-  // `config` is the resolved Cypress config
+
+  on(`before:browser:launch`, (browser, args) => {
+
+    setTimeout(() => openFiles.forEach(file => file.emit(`rerun`)), 3000 );
+
+    if (browser.name === `chrome`) {
+      return args.concat(`--auto-open-devtools-for-tabs`);
+    }
+  });
+
+  on(`file:preprocessor`, file => {
+
+    if ( file.shouldWatch && !openFiles.find(f => f.filePath === file.filePath)) {
+
+      openFiles.push(file);
+
+      file.on(`close`, () => {
+        openFiles = openFiles.filter(f => f.filePath !== file.filePath);
+      });
+    }
+
+    return file.filePath;
+  });
 }
